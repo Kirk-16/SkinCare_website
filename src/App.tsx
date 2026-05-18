@@ -21,6 +21,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import imageCompression from 'browser-image-compression';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { auth, db, loginWithGoogle, logout, OperationType, handleFirestoreError, storage, ref, uploadBytes, getDownloadURL } from './lib/firebase';
 import { clsx, type ClassValue } from 'clsx';
@@ -328,13 +329,24 @@ const AdminDashboard = () => {
 
     setUploading(true);
     try {
+      // Compress options
+      const options = {
+        maxSizeMB: 0.8, // Aim for under 800KB
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      };
+
+      const compressedFile = file.type.startsWith('image/') 
+        ? await imageCompression(file, options) 
+        : file;
+
       const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
+      await uploadBytes(storageRef, compressedFile);
       const url = await getDownloadURL(storageRef);
       setNewProduct(prev => ({ ...prev, image: url }));
     } catch (e) {
       console.error("Upload error:", e);
-      alert('Failed to upload image. Please check your Firebase Storage settings.');
+      alert('Failed to upload image. Large images may fail if the network is unstable.');
     } finally {
       setUploading(false);
     }
