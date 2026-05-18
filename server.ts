@@ -22,6 +22,11 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Health Check
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
   // API Routes
   app.post("/api/recommendations", async (req, res) => {
     try {
@@ -59,12 +64,14 @@ async function startServer() {
     app.use(vite.middlewares);
 
     app.get('*', async (req, res, next) => {
-      if (req.originalUrl.startsWith('/api')) {
+      const url = req.originalUrl;
+      if (url.startsWith('/api')) {
         return next();
       }
+
       try {
         let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
-        template = await vite.transformIndexHtml(req.originalUrl, template);
+        template = await vite.transformIndexHtml(url, template);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
