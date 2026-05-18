@@ -141,6 +141,9 @@ const Navbar = ({ wishlistCount, cartCount }: { wishlistCount: number, cartCount
                         <p className="text-xs font-bold uppercase tracking-widest leading-none mb-1 truncate">{user.displayName || 'Glow Member'}</p>
                         <p className="text-[10px] text-primary/40 truncate">{user.email}</p>
                       </div>
+                      {user.email === 'kirklatras@gmail.com' && (
+                        <Link to="/admin" onClick={() => setIsAccountOpen(false)} className="block w-full text-left text-[10px] uppercase tracking-widest font-bold hover:text-accent">Admin Dashboard</Link>
+                      )}
                       <button onClick={() => { setIsSettingsOpen(true); setIsAccountOpen(false); }} className="w-full text-left text-[10px] uppercase tracking-widest font-bold hover:text-accent">Settings</button>
                       <button onClick={() => { logout(); setIsAccountOpen(false); }} className="w-full flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-red-500 hover:text-red-600">
                         <LogOut size={14} /> Sign Out
@@ -283,6 +286,140 @@ const ProductCard = ({ product, onWishlist, isWishlisted }: { product: Product, 
 
 // --- Pages ---
 
+const AdminDashboard = () => {
+  const { user } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newProduct, setNewProduct] = useState<Partial<Product>>({
+    name: '', brand: '', price: 0, category: 'Face', image: '', description: '', isInternational: false, rating: 5, reviews: 0
+  });
+
+  useEffect(() => {
+    const q = query(collection(db, 'products'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setProducts(snapshot.docs.map(doc => ({ ...doc.data() } as Product)));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const id = Date.now().toString();
+      const productData = { ...newProduct, id };
+      await setDoc(doc(db, 'products', id), productData);
+      setIsAdding(false);
+      setNewProduct({ name: '', brand: '', price: 0, category: 'Face', image: '', description: '', isInternational: false, rating: 5, reviews: 0 });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'products');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await deleteDoc(doc(db, 'products', id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `products/${id}`);
+    }
+  };
+
+  if (!user) return <div className="pt-32 px-6 text-center">Please sign in to access admin.</div>;
+
+  return (
+    <div className="pt-32 px-6 max-w-7xl mx-auto min-h-screen pb-24">
+      <div className="flex justify-between items-end mb-12">
+        <h1 className="text-4xl font-serif tracking-tight">Inventory Management</h1>
+        <button 
+          onClick={() => setIsAdding(!isAdding)}
+          className="bg-primary text-white px-6 py-2 text-[10px] uppercase tracking-widest font-bold hover:bg-accent transition-all"
+        >
+          {isAdding ? 'Cancel' : 'Add New Product'}
+        </button>
+      </div>
+
+      {isAdding && (
+        <motion.form 
+          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleAdd} 
+          className="mb-16 p-8 bg-primary/5 rounded-sm grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-bold tracking-widest">Product Name</label>
+            <input required className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-bold tracking-widest">Brand</label>
+            <input required className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.brand} onChange={e => setNewProduct({...newProduct, brand: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-bold tracking-widest">Price ($)</label>
+            <input required type="number" className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-bold tracking-widest">Category</label>
+            <select className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2 col-span-full">
+            <label className="text-[10px] uppercase font-bold tracking-widest">Image URL</label>
+            <input required className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
+          </div>
+          <div className="space-y-2 col-span-full">
+            <label className="text-[10px] uppercase font-bold tracking-widest">Description</label>
+            <textarea className="w-full bg-white p-3 text-sm outline-none border border-primary/10 min-h-[100px]" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={newProduct.isInternational} onChange={e => setNewProduct({...newProduct, isInternational: e.target.checked})} />
+            <label className="text-[10px] uppercase font-bold tracking-widest">International Brand?</label>
+          </div>
+          <div className="md:col-start-2">
+            <button type="submit" className="w-full bg-accent text-white py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-primary transition-all">Create Product</button>
+          </div>
+        </motion.form>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-primary/10 text-[10px] uppercase tracking-widest font-bold">
+              <th className="py-4 px-2 text-primary/40">Product</th>
+              <th className="py-4 px-2 text-primary/40">Brand</th>
+              <th className="py-4 px-2 text-primary/40">Category</th>
+              <th className="py-4 px-2 text-primary/40">Price</th>
+              <th className="py-4 px-2 text-primary/40 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-primary/5">
+            {products.map(p => (
+              <tr key={p.id} className="group hover:bg-primary/5 transition-colors">
+                <td className="py-4 px-2">
+                  <div className="flex items-center gap-3">
+                    <img src={p.image} className="w-10 h-10 object-cover rounded-sm" alt="" />
+                    <span className="font-serif text-lg">{p.name}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-2 text-sm text-primary/60">{p.brand}</td>
+                <td className="py-4 px-2 text-sm">
+                  <span className="px-2 py-1 bg-paper border border-primary/10 text-[9px] uppercase tracking-widest font-bold rounded-sm">{p.category}</span>
+                </td>
+                <td className="py-4 px-2 font-serif">${p.price}</td>
+                <td className="py-4 px-2 text-right">
+                  <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 transition-colors">
+                    <X size={18} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 const Recommendations = ({ preferences }: { preferences: string }) => {
   const [recs, setRecs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -335,10 +472,10 @@ const Recommendations = ({ preferences }: { preferences: string }) => {
   );
 };
 
-const ProductDetailsPage = ({ onWishlist, wishlist }: { onWishlist: (p: Product) => void, wishlist: Product[] }) => {
+const ProductDetailsPage = ({ onWishlist, wishlist, products }: { onWishlist: (p: Product) => void, wishlist: Product[], products: Product[] }) => {
   const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
-  const product = PRODUCTS.find(p => p.id === id) || PRODUCTS[0];
+  const product = products.find(p => p.id === id) || products[0];
   const isWishlisted = wishlist.some(w => w.id === product.id);
   
   const [reviews, setReviews] = useState<any[]>([]);
@@ -346,12 +483,15 @@ const ProductDetailsPage = ({ onWishlist, wishlist }: { onWishlist: (p: Product)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!product) return;
     const q = query(collection(db, 'products', product.id, 'reviews'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
-  }, [product.id]);
+  }, [product?.id]);
+
+  if (!product) return <div className="pt-32 px-6 text-center">Product not found.</div>;
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -493,11 +633,11 @@ const ProductDetailsPage = ({ onWishlist, wishlist }: { onWishlist: (p: Product)
   );
 };
 
-const ShopPage = ({ onWishlist, wishlist }: { onWishlist: (p: Product) => void, wishlist: Product[] }) => {
+const ShopPage = ({ onWishlist, wishlist, products }: { onWishlist: (p: Product) => void, wishlist: Product[], products: Product[] }) => {
   const [filter, setFilter] = useState({ category: 'All', brand: 'All' });
   const [search, setSearch] = useState('');
 
-  const filteredProducts = PRODUCTS.filter(p => {
+  const filteredProducts = products.filter(p => {
     const matchesCat = filter.category === 'All' || p.category === filter.category;
     const matchesBrand = filter.brand === 'All' || p.brand === filter.brand;
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase());
@@ -657,7 +797,7 @@ const WishlistPage = ({ wishlist, onRemove }: { wishlist: Product[], onRemove: (
   );
 };
 
-const HomePage = ({ onWishlist, wishlist }: { onWishlist: (p: Product) => void, wishlist: Product[] }) => {
+const HomePage = ({ onWishlist, wishlist, products }: { onWishlist: (p: Product) => void, wishlist: Product[], products: Product[] }) => {
   return (
     <div className="pt-20">
       {/* Hero Section */}
@@ -765,7 +905,7 @@ const HomePage = ({ onWishlist, wishlist }: { onWishlist: (p: Product) => void, 
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
-          {PRODUCTS.slice(0, 3).map((product) => (
+          {products.slice(0, 3).map((product) => (
             <ProductCard 
               key={product.id} 
               product={product} 
@@ -806,6 +946,7 @@ const HomePage = ({ onWishlist, wishlist }: { onWishlist: (p: Product) => void, 
 // --- Main App Logic ---
 
 export default function App() {
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [cart, setCart] = useState<Product[]>([]);
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -813,6 +954,22 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsubscribe();
+  }, []);
+
+  // Fetch all products from Firestore
+  useEffect(() => {
+    const q = query(collection(db, 'products'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setAllProducts(snapshot.docs.map(doc => ({ ...doc.data() } as Product)));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Seed data if empty
+  useEffect(() => {
+    import('./lib/firebase').then(({ seedProducts }) => {
+      seedProducts(PRODUCTS);
+    });
   }, []);
 
   // Sync Wishlist from Firestore
@@ -825,14 +982,14 @@ export default function App() {
     const q = query(collection(db, 'users', user.uid, 'wishlist'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const wishlistedIds = snapshot.docs.map(doc => doc.id);
-      const items = PRODUCTS.filter(p => wishlistedIds.includes(p.id));
+      const items = allProducts.filter(p => wishlistedIds.includes(p.id));
       setWishlist(items);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/wishlist`);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, allProducts]);
 
   const toggleWishlist = async (product: Product) => {
     if (!user) {
@@ -866,12 +1023,13 @@ export default function App() {
           
           <main className="flex-grow">
             <Routes>
-              <Route path="/" element={<HomePage onWishlist={toggleWishlist} wishlist={wishlist} />} />
-              <Route path="/shop" element={<ShopPage onWishlist={toggleWishlist} wishlist={wishlist} />} />
-              <Route path="/product/:id" element={<ProductDetailsPage onWishlist={toggleWishlist} wishlist={wishlist} />} />
+              <Route path="/" element={<HomePage onWishlist={toggleWishlist} wishlist={wishlist} products={allProducts} />} />
+              <Route path="/shop" element={<ShopPage onWishlist={toggleWishlist} wishlist={wishlist} products={allProducts} />} />
+              <Route path="/product/:id" element={<ProductDetailsPage onWishlist={toggleWishlist} wishlist={wishlist} products={allProducts} />} />
               <Route path="/brands" element={<BrandsPage />} />
               <Route path="/wishlist" element={<WishlistPage wishlist={wishlist} onRemove={toggleWishlist} />} />
-              <Route path="/blog" element={<HomePage onWishlist={toggleWishlist} wishlist={wishlist} />} />
+              <Route path="/blog" element={<HomePage onWishlist={toggleWishlist} wishlist={wishlist} products={allProducts} />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </main>
 

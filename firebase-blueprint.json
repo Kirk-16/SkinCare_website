@@ -36,6 +36,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["productId", "userId", "rating"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Makeup product details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviews": { "type": "number" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "isInternational": { "type": "boolean" }
+      },
+      "required": ["name", "brand", "price", "category", "image"]
     }
   },
   "firestore": {
@@ -46,6 +64,10 @@
     "/users/{userId}/wishlist/{productId}": {
       "schema": "WishlistItem",
       "description": "User wishlist items"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Product catalog"
     },
     "/products/{productId}/reviews/{reviewId}": {
       "schema": "Review",

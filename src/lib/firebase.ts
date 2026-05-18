@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, onSnapshot, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, onSnapshot, serverTimestamp, deleteDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -72,3 +72,20 @@ export const loginWithGoogle = async () => {
 };
 
 export const logout = () => signOut(auth);
+
+// Seeding
+export const seedProducts = async (products: any[]) => {
+  try {
+    const productsRef = collection(db, 'products');
+    const snapshot = await getDocs(productsRef);
+    if (snapshot.empty) {
+      console.log('Seeding products...');
+      for (const p of products) {
+        const docRef = doc(db, 'products', p.id);
+        await setDoc(docRef, p);
+      }
+    }
+  } catch (error) {
+    console.error("Seed error:", error);
+  }
+};

@@ -54,7 +54,33 @@ service cloud.firestore {
         && data.createdAt == request.time;
     }
 
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() <= 200
+        && data.brand is string && data.brand.size() <= 100
+        && data.price is number && data.price >= 0
+        && data.category is string && data.category.size() <= 50
+        && (data.description == null || (data.description is string && data.description.size() <= 5000))
+        && data.image is string && data.image.size() <= 1000
+        && data.isInternational is bool;
+    }
+
     // Collection Rules
+    match /products/{productId} {
+      allow list, get: if true;
+      allow create, update, delete: if isEmailVerified(); // For MVP, let verified users manage. In production, use isAdmin check.
+      
+      match /reviews/{reviewId} {
+        allow list: if true; 
+        allow get: if true;
+        allow create: if isEmailVerified() && isValidId(productId) && isValidId(reviewId) && isValidReview(incoming())
+          && incoming().keys().hasAll(['productId', 'userId', 'userName', 'rating', 'comment', 'createdAt'])
+          && incoming().keys().size() == 6;
+        allow update: if isOwner(existing().userId) && isEmailVerified() && isValidReview(incoming())
+          && incoming().diff(existing()).affectedKeys().hasOnly(['comment', 'rating']);
+        allow delete: if isOwner(existing().userId) && isEmailVerified();
+      }
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) && isEmailVerified() && isValidUser(incoming())
