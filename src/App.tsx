@@ -38,7 +38,8 @@ const getImageUrl = (url: string) => {
   if (url.includes('drive.google.com')) {
     const id = url.match(/[-\w]{25,}/);
     if (id) {
-       return `https://drive.google.com/uc?export=view&id=${id[0]}`;
+       // Using lh3.googleusercontent.com is often more reliable than drive.google.com/uc
+       return `https://lh3.googleusercontent.com/d/${id[0]}`;
     }
   }
   return url;
@@ -858,7 +859,7 @@ const WishlistPage = ({ wishlist, onRemove }: { wishlist: Product[], onRemove: (
             {wishlist.map(product => (
               <div key={product.id} className="group space-y-4">
                  <div className="aspect-[3/4] overflow-hidden rounded-sm relative">
-                    <img src={product.image} className="w-full h-full object-cover" alt={product.name} />
+                    <img src={getImageUrl(product.image)} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={product.name} />
                     <button 
                       onClick={() => onRemove(product)}
                       className="absolute top-0 right-0 p-4 text-primary bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
