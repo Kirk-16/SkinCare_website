@@ -16,11 +16,13 @@ import {
   User,
   Sparkles,
   LogOut,
-  LogIn
+  LogIn,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { auth, db, loginWithGoogle, logout, OperationType, handleFirestoreError } from './lib/firebase';
+import { auth, db, loginWithGoogle, logout, OperationType, handleFirestoreError, storage, ref, uploadBytes, getDownloadURL } from './lib/firebase';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Product, BlogPost } from './types';
@@ -302,6 +304,7 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '', brand: '', price: 0, category: 'Face', image: '', description: '', isInternational: false, rating: 5, reviews: 0
   });
@@ -313,6 +316,29 @@ const AdminDashboard = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 50MB.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setNewProduct(prev => ({ ...prev, image: url }));
+    } catch (e) {
+      console.error("Upload error:", e);
+      alert('Failed to upload image. Please check your Firebase Storage settings.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -384,13 +410,33 @@ const AdminDashboard = () => {
             </select>
           </div>
           <div className="space-y-2 col-span-full">
-            <label className="text-[10px] uppercase font-bold tracking-widest">Image URL</label>
-            <input required className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
-            {newProduct.image && (
-              <div className="mt-2 aspect-video bg-white overflow-hidden rounded-sm border border-primary/10">
-                <img src={getImageUrl(newProduct.image)} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+            <label className="text-[10px] uppercase font-bold tracking-widest">Product Image</label>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-grow space-y-2">
+                <input 
+                  placeholder="Paste URL or upload below"
+                  className="w-full bg-white p-3 text-sm outline-none border border-primary/10" 
+                  value={newProduct.image} 
+                  onChange={e => setNewProduct({...newProduct, image: e.target.value})} 
+                />
+                <label className="flex items-center gap-2 cursor-pointer bg-primary/5 hover:bg-primary/10 transition-colors p-3 border border-dashed border-primary/20 rounded-sm">
+                  {uploading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Upload size={16} />
+                  )}
+                  <span className="text-[10px] uppercase tracking-widest font-bold">
+                    {uploading ? 'Uploading...' : 'Upload Local Image (Max 50MB)'}
+                  </span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                </label>
               </div>
-            )}
+              {newProduct.image && (
+                <div className="w-full md:w-48 aspect-square bg-white overflow-hidden rounded-sm border border-primary/10 shrink-0">
+                  <img src={getImageUrl(newProduct.image)} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-2 col-span-full">
             <label className="text-[10px] uppercase font-bold tracking-widest">Description</label>
