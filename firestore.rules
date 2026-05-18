@@ -64,10 +64,14 @@ service cloud.firestore {
         && data.isInternational is bool;
     }
 
+    function isAdmin() {
+      return isEmailVerified() && request.auth.token.email == 'kirklatras@gmail.com';
+    }
+
     // Collection Rules
     match /products/{productId} {
       allow list, get: if true;
-      allow create, update, delete: if isEmailVerified(); // For MVP, let verified users manage. In production, use isAdmin check.
+      allow create, update, delete: if isAdmin(); 
       
       match /reviews/{reviewId} {
         allow list: if true; 

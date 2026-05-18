@@ -325,7 +325,15 @@ const AdminDashboard = () => {
     }
   };
 
-  if (!user) return <div className="pt-32 px-6 text-center">Please sign in to access admin.</div>;
+  const isAdmin = user?.email === 'kirklatras@gmail.com';
+
+  if (!isAdmin) return (
+    <div className="pt-32 px-6 text-center space-y-4">
+      <h1 className="text-2xl font-serif">Access Denied</h1>
+      <p className="text-primary/60">Only administrators can manage the inventory.</p>
+      <Link to="/" className="inline-block bg-primary text-white px-8 py-3 text-[10px] uppercase font-bold tracking-widest">Return Home</Link>
+    </div>
+  );
 
   return (
     <div className="pt-32 px-6 max-w-7xl mx-auto min-h-screen pb-24">
@@ -963,13 +971,6 @@ export default function App() {
       setAllProducts(snapshot.docs.map(doc => ({ ...doc.data() } as Product)));
     });
     return () => unsubscribe();
-  }, []);
-
-  // Seed data if empty
-  useEffect(() => {
-    import('./lib/firebase').then(({ seedProducts }) => {
-      seedProducts(PRODUCTS);
-    });
   }, []);
 
   // Sync Wishlist from Firestore
