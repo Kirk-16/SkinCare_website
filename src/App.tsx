@@ -30,6 +30,17 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const getImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.includes('drive.google.com')) {
+    const id = url.match(/[-\w]{25,}/);
+    if (id) {
+       return `https://drive.google.com/uc?export=view&id=${id[0]}`;
+    }
+  }
+  return url;
+};
+
 // --- Auth Context ---
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -241,8 +252,9 @@ const ProductCard = ({ product, onWishlist, isWishlisted }: { product: Product, 
     >
       <div className="aspect-[3/4] overflow-hidden bg-primary/5 rounded-sm relative">
         <img 
-          src={product.image} 
+          src={getImageUrl(product.image)} 
           alt={product.name} 
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
         <button 
@@ -374,6 +386,11 @@ const AdminDashboard = () => {
           <div className="space-y-2 col-span-full">
             <label className="text-[10px] uppercase font-bold tracking-widest">Image URL</label>
             <input required className="w-full bg-white p-3 text-sm outline-none border border-primary/10" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
+            {newProduct.image && (
+              <div className="mt-2 aspect-video bg-white overflow-hidden rounded-sm border border-primary/10">
+                <img src={getImageUrl(newProduct.image)} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              </div>
+            )}
           </div>
           <div className="space-y-2 col-span-full">
             <label className="text-[10px] uppercase font-bold tracking-widest">Description</label>
@@ -405,7 +422,7 @@ const AdminDashboard = () => {
               <tr key={p.id} className="group hover:bg-primary/5 transition-colors">
                 <td className="py-4 px-2">
                   <div className="flex items-center gap-3">
-                    <img src={p.image} className="w-10 h-10 object-cover rounded-sm" alt="" />
+                    <img src={getImageUrl(p.image)} referrerPolicy="no-referrer" className="w-10 h-10 object-cover rounded-sm" alt="" />
                     <span className="font-serif text-lg">{p.name}</span>
                   </div>
                 </td>
@@ -533,7 +550,7 @@ const ProductDetailsPage = ({ onWishlist, wishlist, products }: { onWishlist: (p
       <div className="grid md:grid-cols-2 gap-16">
         <div className="space-y-4">
           <div className="aspect-[4/5] bg-primary/5 overflow-hidden rounded-sm">
-            <img src={product.image} className="w-full h-full object-cover" alt={product.name} />
+            <img src={getImageUrl(product.image)} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={product.name} />
           </div>
         </div>
         <div className="space-y-8">
